@@ -1,4 +1,4 @@
-# Mak_h_ro_0 repository - Readme #
+# Mak-h-ro - Readme #
 
 This repository contains all models and SESSL-experiments from the paper:
 CITATION
