@@ -1,0 +1,74 @@
+<project>
+	<modelVersion>4.0.0</modelVersion>
+
+	<name>SESSL Example Project</name>
+	<groupId>org.sessl</groupId>
+	<artifactId>sessl-quickstart</artifactId>
+	<version>0.20</version>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.sessl</groupId>
+			<artifactId>sessl-ml3</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.sessl</groupId>
+			<artifactId>sessl-verification</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.jamesii</groupId>
+			<artifactId>ml3</artifactId>
+			<version>0.2.7</version>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<sourceDirectory>.</sourceDirectory>
+
+		<plugins>
+			<!-- Scala support -->
+			<plugin>
+				<groupId>net.alchim31.maven</groupId>
+				<artifactId>scala-maven-plugin</artifactId>
+				<version>3.3.1</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>compile</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<scalaVersion>2.12.4</scalaVersion>
+					<launchers>
+						<launcher>
+							<mainClass>Mak_h_ro_0</mainClass>
+							<jvmArgs>
+								<!-- Set the log level to one of the following values:
+								 debug (most verbose)
+								 info
+								 warn
+								 error (least verbose)
+								 -->
+								<jvmArg>-Dorg.slf4j.simpleLogger.defaultLogLevel=info</jvmArg>
+								<!-- You may want comment this in (and increase it), to make more memory available to the JVM: -->
+                                <jvmArg>-Xmx252g</jvmArg>
+							</jvmArgs>
+						</launcher>
+					</launchers>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>
+  
+  

@@ -1,0 +1,1515 @@
+Firm(
+  //Goods market
+  price : real := 1, //initial minimum price
+  targetProduction : real,
+  demand : real,
+  inventory : real := 50,
+  liquidity : real := 100,
+  turnover : real,
+  equity : real := 100,
+  debt : real,
+  wage : real := 2,
+  profitAfterTax : real,
+  consumptionUnit : real, //real consumption (in homogeneous good units)
+  consumption : real, //nominal consumption
+    //auxiliary variables
+    supply_nom : real, //nominal supply
+    inventory_lag : real := 50,
+    inventory_lag_Min : real := 50,
+    turnover_lag_1 : real,
+    turnover_lag_2 : real,
+    turnover_lag_3 : real,
+      //validation
+      supplyQuarterly : real,
+      supply_nom_lag : real,
+      investmentQuarterly : real,
+      consumptionQuarterly : real,
+
+  //Investment market
+  investment : real := 10, //investment amount in investment strategy
+  investmentConsumeUnit : real, //real investment sales (in homogeneous good units)
+  investmentConsume : real, //nominal investment sales
+  investmentAmount : real := 10, //investment amount consumed
+  investmentTurnover : real := 1,
+  investmentCosts : real,
+
+  //Credit market
+  depositProfit : real,
+    //auxiliary variables
+    creditSum : real, //for counter-cyclical buffer
+    creditSum_lag : real, //for counter-cyclical buffer
+      //Validation
+      investmentPeriod : real,
+      countBankruptcy : real,
+      investmentPool : real := 10,
+      interest : real,
+      interest_lag : real,
+  id : int
+)
+
+Household(
+  wealth : real := 2
+)
+
+Bank(
+  //Credit market
+  equity : real := 10,
+  liquidity : real := 10,
+  margin : real := 0.01,
+  creditDemandLeverage : real,
+  creditDemandSolvency : real,
+  riskLevel : real := 1,
+
+  //Interbank market
+  depositMargin : real := 0.0001,
+  interbankMargin : real := 0.01,
+  depositDemand : real,
+  reservesDemand : real,
+  basisMoney : real := 100,
+  reserveRequirement : real := 105,
+  centralLoan : real,
+  interbankVolume : real,
+  centralCosts : real,
+  interbankCosts : real,
+  interbankProfit : real,
+    //auxiliary variable
+    centralCosts_lag : real,
+      //Validation
+      profit : real,
+      countBankruptcy : real,
+      creditDefault : real,
+      paymentWages : real,
+      paymentWages_lag : real,
+      depositInterest_lag : real,
+  id : int
+)
+
+singleton Government(
+  debt : real,
+  liquidity : real,
+      //Validation
+      bailoutCheck : real
+)
+
+singleton CentralBank(
+  keyRate : real := 0.01,
+  basisMoney : real,
+  lendingFacility : real,
+  priceInflation : real,
+  demandInflation : real,
+  inflationBasis : real := 2,
+    //auxiliary variables
+    inflation_lag_4 : real := 2,
+    inflation_lag_3 : real := 2,
+    inflation_lag_2 : real := 2,
+    inflation_lag_1 : real := 2,
+    gdp : real,
+    gdp_lag : real,
+    creditGDP : real,
+    creditGDP_lag_1 : real,
+    creditGDP_lag_2 : real,
+    creditGDP_lag_3 : real,
+    creditGDP_lag_4 : real,
+    interbankVolume : real
+)
+
+//auxiliary agent
+CreditLine(
+  loanLiability : real,
+  coupon : real,
+  interest : real
+)
+
+//auxiliary agent
+singleton Mercury(
+)
+
+//Interlinkages
+  //Real economy
+  employer:Firm[1]<->[n]Household:employees
+  //Credit market
+  creditor:Bank[1]<->[n]CreditLine:receivables
+  debtor:Firm[1]<->[n]CreditLine:liabilities
+  //Interbank market
+  depositInstituteFirm:Bank[1]<->[n]Firm:depositorFirm //Firm bank account
+  depositInstituteHH:Bank[1]<->[n]Household:depositorHH //Household bank account
+
+//agent size
+n_F : int := 48 //Firms
+n_H : int := 480 //Households
+n_B : int := 12  //Banks
+n_G : int := 1   //Government - Singleton
+n_C : int := 1   //CentralBank - Singleton
+n_CL : int := 1  //CreditLine - auxiliary agent
+n_M : int := 1   //Mercury - Singleton - auxiliary agent
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//PARAMETER
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Goods market | households, firms, government
+productivityBase : real //firm productivity factor
+fullEmployment : real //Non-Accelerating Inflation Rate of Unemployment (NAIRU)
+gamma_y : real //production change sensitivity
+gamma_p : real //price change sensitivity
+inventoryTarget : real //relative inventory target
+zeta_h : real //sensitivity of employee hiring process
+zeta_f : real //sensitivity of employee firing process
+insolvencyRatio : real //maximum debt ratio
+minEquityRatio : real //minimum equity ratio to have sufficient collateral for external borrowing
+minEmployees : int //minimum employee size when a firm goes bankrupt
+avgPrice : real //controls average (avg) price path
+delta : real //global parameter
+tax : real //government tax
+benefit : real //unemployment benefit
+
+//Investment cycle | firms
+gamma_inv : real //investment change sensitivity
+investmentDuration : real //investment loan duration
+minInvestCycle : int //maximum investment frequency (in periods)
+
+//Credit market | banks, firms, government
+gamma_m : real //loan interest margin sensitivity (bank strategy)
+gamma_r : real //risk level sensitivity (bank strategy)
+loanDuration : real //global loan duration
+ratioSolvency : real //due to Basel III - Tier-1 capital + conservation buffer
+ratioLeverage : real //due to Basel III
+creditTarget : real //buffer (10% from total credit creation potential)
+probabilityDefault : real //set to 0.5 since expected Cashflow - debtService should be maximum = 0
+inflationTarget : real //due to European Central Bank [2022]
+naturalInterest : real //global interest level within Taylor rule
+
+//Interbank market | banks, Central Bank
+gamma_i : real //interbank interest change sensitivity
+facilityRange : real //interest rate corridor (standing facility of Central Bank)
+interbankFrequency : real //interaction frequency
+fractionalReserve : real //minimum reserve requirement due to European Central Bank [2022]
+
+//Deposit market | banks
+gamma_d : real //deposit interest change sensitivity
+depositBuffer : real //interest spread between lending facility and deposit interest margin
+accountFluctuationHH : real //deposit change probability hurdle
+hhAccountChange : real //change bank account for better conditions every 12 periods
+firmAccountChange : real //change bank account for better conditions approximately every decade
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//REAL ECONOMY
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+//GOODS MARKET
+///////////////////////////////////////////////////////////////////////////////
+//Strategy change
+Firm
+| true
+@ ego.strategyChangeRate()
+-> ego.setStrategy()
+
+Firm.strategyChangeRate() : real :=
+  if ego.inventory / ego.inventoryTarget() < 1 then (1 - ego.inventory / ego.inventoryTarget()) + 1
+  else ego.inventory / ego.inventoryTarget()
+
+Firm.inventoryTarget() : real :=
+  max((ego.averageProductionCapacity() * productivityBase - ego.production()) * inventoryTarget,1)
+
+
+//////////////////////////////////////////////////////
+//PRODUCTION AND FIRM STRATEGY | goods supply
+/////////////////////////////////////////////////////
+Firm.production() : real := ego.employees.size() * productivityBase
+
+//Inventory update
+Firm
+| true
+@ ego.production()
+-> ego.inventory += 1
+
+//Relation of supply and demand
+Firm.demandEqualsProduction() : bool := !ego.demandGreaterThanProduction() && !ego.demandLessThanProduction()
+Firm.demandGreaterThanProduction() : bool := ego.inventory / ego.inventoryTarget() <= 1
+Firm.demandLessThanProduction() : bool := ego.inventory / ego.inventoryTarget() > 1
+
+/* Behavior of firms to react on demand, which depend on price and production and vice versa.
+Imitates reality due to the tendency to reach equilibrium with rarely success. */
+Firm.setStrategy() ->
+//demand = production && Mercury.fullyEmployed() -> no action = NAIRU
+//demand > production
+  //full employment means higher price pressure due to limited production capacity
+  if (ego.demandGreaterThanProduction() && Mercury.fullyEmployed()) then
+           ego.price := ego.price + (gamma_p * random())
+  //price > average price
+  else if (ego.demandGreaterThanProduction() && ego.price > ?average && !Mercury.fullyEmployed()) then
+           ego.targetProduction := ego.production() * (1 + gamma_y * random())
+  //price < average
+  else if (ego.demandGreaterThanProduction() && ego.price <= ?average && !Mercury.fullyEmployed()) then
+           ego.price := ego.price + (gamma_p * random())
+//demand < production
+  //price > average
+  else if (ego.demandLessThanProduction() && ego.price > ?average) then
+           ego.price := max(ego.price - (gamma_p * random()), ?minimumPrice)
+  //price < average price
+  else if (ego.demandLessThanProduction() && ego.price <= ?average) then
+           ego.targetProduction := ego.production() * (1 - gamma_y * random())
+  end
+  ego.demand := 0
+where ?average := avgPrice
+      ?minimumPrice := ego.minPrice()
+
+//fix costs = wages; variable costs = external financing
+Firm.minPrice() : real := ego.wage / productivityBase + ego.interest_lag / max(ego.production(), productivityBase)
+
+
+//////////////////////////////////////////////////////
+//HIRE AND FIRE | Labor market
+//////////////////////////////////////////////////////
+Firm //hire
+| ego.laborDemand() > ego.employees.size() && ?unemployed.size() > 0
+@ if ego.employees.size() = 0 then ego.laborDemand() else (ego.laborDemand() / ego.employees.size()) ^ zeta_h
+-> if (?unemployed.size() > 0) then
+       ego.employees += [?unemployed.random()]
+   end
+where ?unemployed := Household.all.filter(!alter.hasEmployer())
+
+Firm //fire
+| (ego.employees.size() > ego.laborDemand())
+@ (ego.employees.size() / ego.laborDemand()) ^ zeta_f
+-> ego.employees -= [ego.employees.random()]
+
+Firm.laborDemand() : real := max(1, ceil((ego.targetProduction / productivityBase)))
+
+
+//////////////////////////////////////////////////////
+//CONSUMPTION | goods demand
+//////////////////////////////////////////////////////
+Household //attraction to price
+| true
+@ ego.wealth
+-> if (?firms.size() > 0 && ego.wealth > ?firm.price) then
+       //transaction
+       ego.wealth -= ?firm.price
+       ?firm.inventory -= 1
+	   //accounting
+       ?firm.turnover += ?firm.price
+       ?firm.liquidity += ?firm.price
+       ?firm.demand += 1
+       ?firm.supply_nom += ?firm.price //nominal supply
+       ?firm.supplyQuarterly += 1
+       ?firm.consumption += ?firm.price
+       ?firm.consumptionUnit += 1
+       ?firm.consumptionQuarterly += ?firm.price
+       //payment system transaction
+       ego.depositInstituteHH.basisMoney -= ?firm.price * (1-delta)
+       ?firm.depositInstituteFirm.basisMoney += ?firm.price * (1-delta)
+	   //inflation measurement
+       CentralBank.demandInflation += 1
+       CentralBank.priceInflation += ?firm.price
+   end
+where ?firms := Firm.all.filter(alter.inventory > 0)
+      ?firm := ?firms.weightedRandom(Mercury.averagePrice() / alter.price)//^beta_price) // price sensitivity
+
+
+//////////////////////////////////////////////////////
+//BANKRUPTCY
+//////////////////////////////////////////////////////
+/* Solvency = outstanding debt/credits in relation to financial wealth (liquidity, equity, expected profits);
+Insolvency ratio can be higher than 1. This assumption is appropriate since investments/capital are/is not posted
+in the firms balance sheet. */
+Firm
+| ego.isBankrupt()
+@ every 1
+-> ego.postNonPerformingLoan()
+   Government.debt += ego.debt //debt depicts overdraft facility by banks
+   Government.bailoutCheck += ego.debt
+   ego.debt := 0
+   ego.employees := ego.employees.random(minEmployees) //firm keeps five employees due to calibration
+   //Validation
+   ego.countBankruptcy += 1
+where ?unemployed := Household.all.filter(!alter.hasEmployer())
+
+Firm.isBankrupt() : bool := ego.solvency() > insolvencyRatio
+
+Firm.postNonPerformingLoan() ->
+  if ego.hasLoan() then
+	   for each ?nonPerformingLoan in ego.liabilities
+           ?nonPerformingLoan.creditor.equity -= ?nonPerformingLoan.loanLiability
+           ?nonPerformingLoan.creditor.creditDefault += ?nonPerformingLoan.loanLiability //Validation
+           ?nonPerformingLoan.die()
+           ?nonPerformingLoan.creditor.receivables -= [?nonPerformingLoan]
+           ego.liabilities -= [?nonPerformingLoan]
+       end
+  end
+
+
+////////////////////////////////////////////////////////////////////////////////
+//INVESTMENT MARKET
+///////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////
+//INVESTMENT CYCLE
+//////////////////////////////////////////////////////
+Firm
+| !ego.isBankrupt()
+@ ego.investmentChangeRate()
+-> //accounting
+   ego.investmentPool := 0
+   //investment cycle
+   ego.setInvestmentStrategy()
+   ?financialNeed := ego.investment
+   ?isInvestment := true
+   ?duration := investmentDuration
+   ego.requestLoan(?financialNeed, ?isInvestment, ?duration)
+   //accounting
+   ego.investmentTurnover := 0
+   ego.investmentCosts := 0
+
+/* Defines investment frequency
+-> dependent on production capacity and solvency
+-> production capacity -> average employee size within full employment sphere = Households / Firm
+-> solvency -> higher solvency reduces investment rate and vice versa
+-> investment rate depends on solvency corridor
+-> as soon as liquidity Limit is higher than solvency threshold = invest (=expansionary investment) */
+Firm.investmentChangeRate() : real :=
+  if ego.solvency() / ego.investmentTarget() >= 1 then (1 / (max(?procyclicalInvestmentBehavior,0.1) + ego.solvency()))
+  else 1 / max(?procyclicalInvestmentBehavior,0.1)
+where ?procyclicalInvestmentBehavior :=
+      max(ego.averageProductionCapacity() * productivityBase - ego.production(), minInvestCycle)
+
+Firm.investmentTarget() : real := max(insolvencyRatio - ego.couponInterest(),0.01) //0.01 = not to divide by zero
+
+//Relation between interest and coupon -> indicator for interest pressure
+Firm.couponInterest() : real :=
+  if ego.hasLoan() then
+   ?lastInterest / max(?lastCoupon,0.001)
+  else 0
+where ?lastInvestmentLoan := ego.liabilities.argmin(alter.age)
+      ?lastInterest := ?lastInvestmentLoan.interest
+      ?lastCoupon := ?lastInvestmentLoan.coupon
+
+Firm.investmentReturn() : real := ego.investmentTurnover - ego.investmentCosts
+
+/* Investment strategy
+The higher the investment today the higher the profits in the future.
+If production growth does not keep up with investment growth prices fall and investments decrease.
+Investments are influenced by borrowing costs (key interest rate by Central Bank, loan interest margin,
+loan capacity due to Basel III restrictions, liquidity, expected profit and
+production capacity (productivity and full employment).
+*/
+Firm.positiveInvestmentExpectation() : bool := ego.investmentReturn() > 0
+Firm.averageProductionCapacity() : real := Household.all.size() / Firm.all.size()
+
+Firm.setInvestmentStrategy() ->
+//positive outlook without liquidity limit
+if (ego.positiveInvestmentExpectation() && ego.investment <= ego.liquidityLimit()) then
+    ego.investment := ego.investment * (1 + gamma_inv * random())
+//positive outlook with liquidity limit
+else if (ego.positiveInvestmentExpectation() && ego.investment > ego.liquidityLimit()) then
+         ego.investment := ego.liquidityLimit()
+
+//negative outlook without liquidity limit
+else if !ego.positiveInvestmentExpectation() then
+         ego.investment := ego.liquidityLimit()
+end
+
+
+//////////////////////////////////////////////////////
+//INVESTMENT DEMAND
+//////////////////////////////////////////////////////
+Firm
+| true
+@ ego.investmentAmount
+-> if (?firms.size() > 0 && ego.investmentAmount > ?firm.price) then
+       //firm accounting
+       ?firm.investmentTurnover += ?firm.price
+       ?firm.turnover += ?firm.price
+       ?firm.liquidity += ?firm.price
+       ?firm.investmentConsume += ?firm.price
+       ?firm.investmentConsumeUnit += 1
+       ?firm.inventory -= 1
+       ?firm.supply_nom += ?firm.price //nominal supply
+       ?firm.supplyQuarterly += 1
+       ego.investmentAmount -= ?firm.price
+       ego.investmentCosts += ?firm.price
+       //payment system transaction
+       ego.depositInstituteFirm.basisMoney -= ?firm.price * (1-delta)
+       ?firm.depositInstituteFirm.basisMoney += ?firm.price * (1-delta)
+       //inflation measurement
+       CentralBank.demandInflation += 1
+       CentralBank.priceInflation += ?firm.price
+   end
+where ?poolFirms := Firm.all - [ego]
+      ?firms := ?poolFirms.filter(alter.inventory > 0)
+      ?firm := ?firms.weightedRandom((Mercury.averagePrice() / alter.price))
+
+
+//////////////////////////////////////////////////////
+//ACCOUNTING
+//////////////////////////////////////////////////////
+Firm //Negative liquidity is balanced with bank borrowing; debt is redeemed with profit
+| true
+@ every 1
+-> ego.payLoan()
+   ego.interest_lag := ego.interest
+   ego.interest := 0
+   ?currentProfit := ego.turnover + (ego.inventory * ego.minPrice() - ego.inventory_lag_Min) + ego.depositProfit -
+   (ego.employees.size() * ego.wage + ego.interest_lag)
+   ego.allocateProfit(?currentProfit)
+   ego.payWages()
+   ego.inventory_lag := ego.inventory
+   ego.inventory_lag_Min := ego.inventory * ego.minPrice()
+   ego.turnover_lag_3 := ego.turnover_lag_2
+   ego.turnover_lag_2 := ego.turnover_lag_1
+   ego.turnover_lag_1 := ego.turnover
+   ego.turnover := 0
+   //validation
+   ego.investmentPeriod := 0
+   ego.investmentConsume := 1
+   ego.consumption := 1
+   ego.investmentConsumeUnit := 0
+   ego.consumptionUnit := 0
+
+//General pecking order -> 1. liquidity, 2. debt, 3. equity
+Firm.allocateProfit(?currentProfit : real) ->
+  //payTax
+  if ?currentProfit > 0 then
+     ego.liquidity -= ?currentProfit * tax
+     Government.liquidity += ?currentProfit * tax
+     ?remainingProfit := ?currentProfit * (1 - tax)
+     ego.profitAfterTax := ?remainingProfit
+  //allocate
+    //1. liquidity -> already posted during consumption/investment
+    ego.liquidity -= ?remainingProfit * (1 - delta)
+    ?remainingProfit -= ?remainingProfit * delta
+    //2. debt
+    if ego.debt > 0 then
+       ego.debt -= min(ego.debt, ?remainingProfit * delta)
+       ?remainingProfit -= min(ego.debt, ?remainingProfit * delta)
+    end
+    //3. equity
+    ego.equity += ?remainingProfit
+    ?remainingProfit := 0
+    else if ?currentProfit <= 0 then
+            //if negative profit = automatically substracted by liquidity
+            ego.profitAfterTax := ?currentProfit
+  end
+
+Firm.payWages() -> for each ?employee in ego.employees
+                            ?employee.wealth += ego.wage * (1 - tax)
+                            Government.liquidity += ego.wage * tax
+                            //payment system transaction
+                            ego.depositInstituteFirm.basisMoney -= ego.wage * (1 - tax) * (1-delta)
+                            ego.depositInstituteFirm.paymentWages -= ego.wage * (1 - tax)
+                            ?employee.depositInstituteHH.basisMoney += ego.wage * (1 - tax) * (1-delta)
+                            ?employee.depositInstituteHH.paymentWages += ego.wage * (1 - tax)
+                   end
+                   ego.liquidity -= ego.employees.size() * ego.wage
+
+//meet redemption rate per period
+Firm.payLoan() -> for each ?creditLine in ego.liabilities
+                           ?creditLine.loanLiability -= ?creditLine.coupon + ?creditLine.interest
+                           ego.liquidity -= ?creditLine.coupon + ?creditLine.interest
+                           ego.interest += ?creditLine.interest
+                    //pay interest to bank
+                    ?creditLine.creditor.liquidity += ?creditLine.interest * (1 - tax)
+                    Government.liquidity += ?creditLine.interest * tax
+                    //payment system transaction
+                    ego.depositInstituteFirm.basisMoney -= ?creditLine.interest * (1 - tax) * (1-delta)
+                    ego.depositInstituteFirm.paymentWages -= ?creditLine.interest * (1 - tax)
+                    ?creditLine.creditor.basisMoney += ?creditLine.interest * (1 - tax) * (1-delta)
+                    ?creditLine.creditor.paymentWages += ?creditLine.interest * (1 - tax)
+                    //delete credit line
+                    if ?creditLine.loanLiability <= 0 then
+                       ?creditLine.die()
+                       ?creditLine.creditor.receivables -= [?creditLine]
+                       ego.liabilities -= [?creditLine]
+                    end
+                 end
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//FINANCIAL SECTOR
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////
+//CREDIT CREATION PROCESS | credit demand and supply
+//////////////////////////////////////////////////////
+//CREDIT DEMAND .-> ...via liquidity shortage (533 ff.) or investment behavior (338 ff.)
+//Liquidity shortage
+Firm //if sufficient surplus equity is available internal borrowing is conducted via credit request
+| ego.financialNeed() > 0
+@ instantly
+-> ?financialNeed := ego.financialNeed()
+   ?isInvestment := false
+   ?duration := loanDuration
+   ego.requestLoan(?financialNeed, ?isInvestment, ?duration)
+
+Firm.financialNeed() : real := max(0, ego.laborDemand() * ego.wage - ego.liquidity)
+
+Firm.requestLoan(?financialNeed : real, ?isInvestment : bool, ?duration : real) ->
+  //split loan amount over several banks if loan amount cannot be supplied by one bank only
+  ?candidates := Bank.all.filter(alter.creditCreationPotential()) //banks allowed to grant loan due to Basel III
+  ?remainingLoanRequest := ?financialNeed
+  //check if equity can be invested -> pecking order = 1. internal funding, 2. external funding
+  if ?isInvestment then //liquidity shortage not financed with internal sources; equity needed for investment profits
+     ego.investLiquidity(?remainingLoanRequest)
+     ego.investEquity(?remainingLoanRequest)
+  end
+  //check if firm can supply credit -> otherwise credit rationing
+  while (?remainingLoanRequest > 0 && ?candidates.size() > 0) do
+    ?bank := ?candidates.weightedRandom((Mercury.averageMargin() / alter.margin))
+      //measure credit demand according to law criteria (Basel III leverage/solvency) -> demand influences bank strategy
+      //even if bank cannot supply requested credit amount to firm, credit demand (leverage/solvency) is influential
+      ?bank.creditDemandLeverage += ?remainingLoanRequest
+      ?bank.creditDemandSolvency += ?remainingLoanRequest * ego.ecaiRating()
+      ?candidates -= [?bank]
+      if ?bank.maximumLoanAmount(ego, ?remainingLoanRequest, ?duration) > 0 then
+         ?creditAmount := ?bank.maximumLoanAmount(ego, ?remainingLoanRequest, ?duration)
+         ego.takeLoan(?creditAmount, ?bank, ?isInvestment, ?duration)
+         ?remainingLoanRequest -= ?creditAmount
+      end
+  end
+  //no loan was granted
+  if ?remainingLoanRequest > 0 && ?isInvestment then
+     ?financialNeed := 0 //no investment if insufficient creditworthiness
+     ?remainingLoanRequest := 0
+  else if ?remainingLoanRequest > 0 && !?isInvestment then
+          //Firm uses overdraft facility at principal bank -> no interest charged due to simplification
+          ego.debt += ?remainingLoanRequest
+          ego.liquidity += ?remainingLoanRequest
+          ?remainingLoanRequest := 0
+          ?financialNeed := 0
+  end
+
+//Invest liquidity surplus
+Firm.investLiquidity(?remainingLoanRequest : real) ->
+  if ?liquiditySurplus > 0 then
+     ego.investmentPool += ?liquidityInvestment
+     ego.investmentQuarterly += ?liquidityInvestment
+     ego.investmentPeriod += ?liquidityInvestment
+     ego.investmentAmount += ?liquidityInvestment
+     ego.liquidity -= ?liquidityInvestment
+     ?remainingLoanRequest -= ?liquidityInvestment
+  end
+where ?liquiditySurplus := (ego.liquidity - ?expectedLiquidityOutflow) - max(ego.expectedCollateral() - ego.equity,1)
+      ?liquidityInvestment := min(?liquiditySurplus,?remainingLoanRequest)
+      ?expectedLiquidityOutflow := (ego.employees.size() * ego.wage + ego.coupon() + ego.interest()) * (1 + (1 - delta))
+      //(1-delta) = buffer
+
+//Invest equity surplus
+Firm.investEquity(?remainingLoanRequest : real) ->
+  if ?equitySurplus > 0 then
+     ego.investmentPool += ?equityInvestment
+     ego.investmentQuarterly += ?equityInvestment
+     ego.investmentPeriod += ?equityInvestment
+     ego.investmentAmount += ?equityInvestment
+     ego.equity -= ?equityInvestment
+     ?remainingLoanRequest -= ?equityInvestment
+  end
+where ?equitySurplus := (ego.equity - minEquityRatio * ego.creditAmount()) -
+                        max((ego.expectedCollateral() - ego.liquidity),1)
+      ?equityInvestment := min(?equitySurplus,?remainingLoanRequest)
+
+
+Firm.expectedCollateral() : real := (?expectedDebtService * ((1 + ?pd) *
+                                    investmentDuration - ego.geometricParameter())) / ?pd
+where ?expectedInvestment := min(ego.investment, ego.liquidityLimit())
+      ?expectedDebtService := ?expectedInvestment * (Mercury.averageInterestOffer() + (Mercury.averageInterestOffer() *
+                              ?geometricSeries) / investmentDuration + 1) / investmentDuration
+      ?geometricSeries := investmentDuration * (investmentDuration - 1) / 2
+      ?pd := probabilityDefault //probability of default = 0.5
+
+
+//maximum loan amount (defined by Basel III restrictions, collateral of firm and riskLevel of bank)
+Bank.maximumLoanAmount(?firm : Firm, ?remainingLoanRequest : real, ?duration : real) : real :=
+  if min(ego.ecaiSolvency() / ?firm.ecaiRating(), ego.ecaiLeverage()) >
+    ?firm.maximumLoan(ego, ?remainingLoanRequest, ?duration) then
+    ?firm.maximumLoan(ego, ?remainingLoanRequest, ?duration)
+  else min(ego.ecaiSolvency() / ?firm.ecaiRating(),ego.ecaiLeverage())
+
+/* define maximum loan amount of requesting Firm due to maximum available cash flow
+(checks whether firm can meet credit coupon and interest liabilities) */
+Firm.maximumLoan(?bank : Bank, ?remainingLoanRequest : real, ?duration : real) : real :=
+  if (?remainingLoanRequest <= ego.maximumLoanAmount(?bank, ?remainingLoanRequest, ?duration)) then
+      ?remainingLoanRequest
+  else ego.maximumLoanAmount(?bank, ?remainingLoanRequest, ?duration)
+
+//maximum loan amount that particular bank is willing to supply; bank picking = depends on margin; Firm.requestLoan()
+Firm.maximumLoanAmount(?bank : Bank, ?remainingLoanRequest : real, ?duration : real) : real :=
+  ((investmentDuration * ?grantedDebtService) / (?interest + (?interest * (investmentDuration *
+  (investmentDuration - 1) / 2) / investmentDuration + 1)))
+where ?interest := ?bank.makeOffer()
+      ?grantedDebtService := (ego.netPresentValue() + ego.probabilityDefault(?bank, ?remainingLoanRequest, ?duration) *
+                             ego.defineCollateral(?bank, ?remainingLoanRequest, ?duration)) /
+                             ((1 + ego.probabilityDefault(?bank,?remainingLoanRequest,?duration)) * investmentDuration)
+
+
+/* discounted value of loan in relation to borrowing costs
+Net present value = capitalization factor via Keynes = present value in relation to opportunity costs of investment */
+Firm.netPresentValue() : real :=
+  ?expectedProfit * ego.geometricParameter()
+where ?expectedProfit := max((ego.medianTurnover() + (ego.inventory * ego.minPrice() - ego.inventory_lag_Min) +
+                         ego.depositProfit - ego.employees.size() * ego.wage - ego.interest_lag) * (1 - tax),1)
+
+//Geometric series to calculate equally weighted redemption rate for investments = discounting parameter
+Firm.geometricParameter() : real :=
+  (((1 + ?interestCost)^investmentDuration)-1) / (((1 + ?interestCost)^investmentDuration) * ?interestCost)
+where ?interestCost := Mercury.averageInterestOffer()
+
+//maximum amount of loan due to current net present value and average interest loan by banks
+Firm.liquidityLimit() : real :=
+  ((investmentDuration * ?granted_debtService) / (?interest + (?interest * (investmentDuration *
+  (investmentDuration - 1) / 2) / investmentDuration + 1)))
+where ?interest := Mercury.averageInterestOffer()
+      ?granted_debtService := ((ego.netPresentValue() + ?probabilityDefault * ego.collateralNeed()) /
+                              ((1 + ?probabilityDefault) * investmentDuration))
+      ?probabilityDefault := probabilityDefault //0.5 because maximum possible -> debtService = expectedCashFlow
+
+/* If collateral too low -> risk too high for bank ("blanco credit") -> maximum debt service cannot be used for credit;
+Calculates needed collateral to get full possible debt service for loan redemption (included interest payments);
+If firm has more collateral than needed to fulfill collateral criteria for bank then set collateral to this optimum;
+Within this model: collateral is re-used since no investment assets are posted */
+Firm.defineCollateral(?bank : Bank, ?remainingLoanRequest : real, ?duration : real) : real :=
+  if ego.collateral() * ?bank.riskLevel > ?collateralOptimum then ?collateralOptimum
+  else ego.collateral() * ?bank.riskLevel
+//calculates needed collateral in order to get full possible debt service into loan redemption
+where ?collateralOptimum := max(ego.expectedCashFlow(),1) *
+      ((1 + ego.probabilityDefault(?bank, ?remainingLoanRequest, ?duration) * investmentDuration -
+      ego.geometricParameter())) / ego.probabilityDefault(?bank, ?remainingLoanRequest, ?duration)
+
+//Average collateral needed in order to invest liquidity limit
+Firm.collateralNeed() : real := if (ego.collateral() * Mercury.averageBankRiskLevel() > ego.collateralOptimum()) then
+                                  ego.collateralOptimum()
+                                else ego.collateral() * Mercury.averageBankRiskLevel()
+
+Firm.collateral() : real := ego.equity + ego.liquidity
+Mercury.averageBankRiskLevel() : real := Bank.all.sum(alter.riskLevel) / Bank.all.size()
+
+//calculates needed collateral in order to get full possible debt service into loan redemption
+Firm.collateralOptimum() : real := (max(ego.expectedCashFlow(),1) * ((1 + ?probabilityDefault) * investmentDuration -
+                                   ego.geometricParameter())) / ?probabilityDefault
+where ?probabilityDefault := probabilityDefault //0.5 = maximum possible debtService
+
+//probability of default = the higher pd the lower the probability and vice versa
+Firm.probabilityDefault(?bank : Bank, ?remainingLoanRequest : real, ?duration : real) : real :=
+  max(1 / (1 + exp((ego.expectedCashFlow() - ego.riskLevel(?bank) * ?debtService) / ?debtService)), probabilityDefault)
+where ?debtService := ?coupon + ?interest
+      ?coupon := ?remainingLoanRequest / ?duration
+      ?interest := ?bank.interestRateRequest(?remainingLoanRequest, ?duration)
+
+/* revert banks risk level due to risk logic reversion = higher risk comes along with lower debtService weight
+reversion is needed, because risk level also influence collateral weight. */
+Firm.riskLevel(?bank : Bank) : real := if ?bank.riskLevel > 1 then (1 - (?bank.riskLevel - 1)) else
+                                         (1 + (1 - ?bank.riskLevel))
+
+//Expected cash flow should not be negative. Low cash flow leads to credit rationing anyway.
+Firm.expectedCashFlow() : real := max((ego.medianTurnover() + ego.depositProfit -
+                                  (ego.employees.size() * ego.wage + ego.interest())) * (1-tax),0) - ego.coupon()
+
+
+
+//Define median value of last three turnover. A median excludes extreme values in comparison to an average.
+Firm.medianTurnover() : real := //max(min(a,b), min(max(a,b),c))
+max(min(ego.turnover_lag_1, ego.turnover_lag_2), min(max(ego.turnover_lag_1, ego.turnover_lag_2), ego.turnover_lag_3))
+
+
+//Loan process with one bank that can grant a loan within restrictions (Basel III, interest rate, firm solvency)
+Firm.takeLoan(?creditAmount : real, ?bank : Bank, ?isInvestment : bool, ?duration : real) ->
+  //adapt demand to get only surplus demand
+  ?bank.creditDemandLeverage -= ?creditAmount
+  ?bank.creditDemandSolvency -= ?creditAmount * ego.ecaiRating()
+  //generate new auxiliary gent -> CreditLine
+  ?CreditLine := new CreditLine()
+  ?CreditLine.coupon := ?creditAmount / ?duration //redemption amount per period
+  ?CreditLine.interest := ?bank.interestRate(?creditAmount, ?duration) //average interest costs per period
+  ?CreditLine.loanLiability := ?creditAmount + (?bank.interestRate(?creditAmount, ?duration) * ?duration)
+  //connect bank and firm with new CreditLine
+  ?CreditLine.creditor := ?bank
+  ?CreditLine.debtor := ego
+  ego.creditSum += ?creditAmount
+  //loan transfer
+  ego.liquidity += ?creditAmount
+    if ?isInvestment then
+       ego.liquidity -= ?creditAmount
+       ego.investmentPool += ?creditAmount
+       ego.investmentAmount += ?creditAmount
+       ego.investmentQuarterly += ?creditAmount
+       ego.investmentPeriod += ?creditAmount
+    end
+  //payment system transaction
+  if ?bank.depositorFirm != [ego] then
+     ?bank.basisMoney += ?creditAmount * (1-delta)
+     ego.depositInstituteFirm.basisMoney -= ?creditAmount * (1-delta)
+  end
+
+//interest part for bank profit per period
+Bank.interestRateRequest(?remainingLoanRequest : real, ?duration : real) : real :=
+  ((?remainingLoanRequest * ego.makeOffer()) + (ego.makeOffer() * (?remainingLoanRequest / ?duration) *
+  (?duration * (?duration - 1) / 2))) / ?duration
+
+//interest part for bank profit per period
+Bank.interestRate(?creditAmount : real, ?duration : real) : real :=
+  ((?creditAmount * ego.makeOffer()) + (ego.makeOffer() * (?creditAmount / ?duration) *
+  (?duration * (?duration - 1) / 2))) / ?duration
+
+//The interbank rate is modeled separately. Margin is added on marginal lending facility
+Bank.makeOffer() : real := CentralBank.keyRate + facilityRange + ego.margin
+
+/* SOLVENCY
+-> Risk position due to Article 112 CRR (BASEL III) -> 0.2, 0.5, 1, 1.5
+-> Solvency rate distribution > 0.75, 0.75 =< x > 0.375, 0.375 =< x > 0
+-> Relation between liabilities and assets */
+Firm.solvency(): real := if ego.hasLoan() then
+                           max(ego.debt + ego.liabilities.sum(alter.loanLiability), 1) / ego.totalAssets()
+                         else max(ego.debt, 1) / ego.totalAssets()
+
+Firm.totalAssets() : real := if ?totalAssets = 0 then 1 else ?totalAssets
+where ?totalAssets := max(ego.liquidity,0) + max(ego.equity,1) + ego.expectedCashFlow()
+
+Firm.hasLoan() : bool := if ego.liabilities != [] then true else false
+
+//RATING (ECAI = External Credit Assessment Institution)
+Firm.ecaiRating() : real := if (ego.solvency() > 1) then  1.5
+                            else if (ego.solvency() > 0.75 && ego.solvency() <= 1) then 1
+                            else if (ego.solvency() > 0.375 && ego.solvency() <= 0.75) then 0.5
+                            else if (ego.solvency() <= 0.375) then 0.2
+                            else 1
+
+
+//////////////////////////////////////////////////////
+//BANK STRATEGY | including Basel III restriction
+//////////////////////////////////////////////////////
+Bank
+| true
+@  ego.strategyChangeRate()
+-> ego.setStrategy()
+
+Bank.strategyChangeRate() : real := if ego.creditDemandRelation() < 1 then (1 - ego.creditDemandRelation()) + 1
+                                    else min(ego.creditDemandRelation(),2)
+
+//define relation between current credit potential and target credit potential
+Bank.creditDemandRelation() : real :=
+  if ego.solvencyCriticalDemand() < ego.leverageCriticalDemand() then
+     max(ego.ecaiSolvency() - ego.creditDemandSolvency,1) / ego.solvencyTarget()
+  else max(ego.ecaiLeverage() - ego.creditDemandLeverage,1) / ego.leverageTarget()
+
+
+//calculate credit target/maximum credit potential + surplus demand - buffer (10% from total credit creation potential)
+Bank.solvencyTarget() : real := ego.equity / ratioSolvency  * creditTarget
+Bank.leverageTarget() : real := ego.equity / ratioLeverage * creditTarget
+
+Bank.equityNeed() : real :=  if ego.solvencyCriticalDemand() < ego.leverageCriticalDemand() then
+    (ego.creditDemandSolvency - (ego.ecaiSolvency() - ego.equity / ratioSolvency * creditTarget))
+    * ratioSolvency
+  else (ego.creditDemandLeverage - (ego.ecaiLeverage() - ego.equity / ratioLeverage * creditTarget))
+       * ratioLeverage
+
+/* Current credit potential amount due to most important Basel III restrictions;
+-> Depends on solvency of firms, profit/liquidity/solvency situation of banks */
+Bank.solvencyCriticalDemand() : real := max(ego.ecaiSolvency(), 1) / max(ego.creditDemandSolvency,1)
+Bank.leverageCriticalDemand() : real := max(ego.ecaiLeverage(), 1) / max(ego.creditDemandLeverage,1)
+
+/* remaining credit creation potential due to Basel III restrictions:
+-> equity in relation to total credit amount weighted by firm solvency (Firm.ecaiRating()) = min 7%
+-> equity in relation to total balance sheet amount = min 3% */
+Bank.ecaiSolvency() : real := ego.equity / (ratioSolvency + CentralBank.counterCyclicalBuffer()) - ego.creditECAI()
+Bank.ecaiLeverage() : real := ego.equity / ratioLeverage - ?totalAssets
+where ?totalAssets := ego.creditAmount() + ego.liquidity
+
+Bank.creditCreationPotential() : bool :=
+  if min(ego.ecaiSolvency(), ego.ecaiLeverage()) > (ego.creditAmount() * creditTarget) &&
+  !Mercury.interbankCrash() then true else false
+
+Bank.creditTarget() : real := max(Mercury.creditDemand(),1) / Bank.all.size()
+Bank.creditRelation() : real := max(ego.creditAmount(),1) / (ego.creditTarget() * (1 - creditTarget))
+Mercury.creditDemand() : real := CreditLine.all.sum(alter.loanLiability)
+
+
+//Credit creation potential - relation of credit supply and demand
+Bank.demandEqualsCreation() : bool := !ego.demandGreaterThanCreation() && !ego.demandLessThanCreation() &&
+                                      ego.creditCreationPotential()
+Bank.demandGreaterThanCreation() : bool := ego.creditRelation() > 1 && ego.creditCreationPotential()
+Bank.demandLessThanCreation() : bool := ego.creditRelation() < 1 && ego.creditCreationPotential()
+
+//Bank credit strategy
+Bank.setStrategy() -> if !ego.creditCreationPotential() then
+                        ego.equity += ?availableLiquidity * (1 - creditTarget)
+                        ego.liquidity -= ?availableLiquidity * (1 - creditTarget)
+                      //retention of available profits due to Liquidity Coverage Ratio
+                      else if (ego.demandGreaterThanCreation() && ego.margin <= ?average &&
+                        ego.creditCreationPotential()) then
+                        ego.equity += min(?availableLiquidity, max(ego.equityNeed(), 1))
+                        ego.liquidity -= min(?availableLiquidity, max(ego.equityNeed(), 1))
+                        ego.margin := ego.margin + gamma_m * random()
+                      else if (ego.demandGreaterThanCreation() && ego.margin <= ?average &&
+                        !ego.creditCreationPotential()) then
+                        ego.equity += min(?availableLiquidity, max(ego.equityNeed(), 1))
+                        ego.liquidity -= min(?availableLiquidity, max(ego.equityNeed(), 1))
+                      else if (ego.demandGreaterThanCreation() && ego.margin > ?average) then
+                        ego.equity += min(?availableLiquidity, max(ego.equityNeed(), 1))
+                        ego.liquidity -= min(?availableLiquidity, max(ego.equityNeed(), 1))
+                        ego.riskLevel := max(ego.riskLevel * (1 - gamma_r * random()), 0.5)
+                      else if (ego.demandLessThanCreation() && ego.margin > ?average) then
+                        ego.margin := max(ego.margin - gamma_m * random(), 0.001) //0.001 = minimum accepted rate
+                      else if (ego.demandLessThanCreation() && ego.margin <= ?average) then
+                        ego.riskLevel := min(ego.riskLevel * (1 + gamma_r * random()), 1.5)
+                      end
+                      ego.creditDemandLeverage := 0
+                      ego.creditDemandSolvency := 0
+where ?average := Mercury.averageMargin()
+      ?availableLiquidity := max(ego.liquidity - ego.centralCosts_lag,0)
+
+
+Firm.creditAmount() : real := if ego.hasLoan() then ego.liabilities.sum(alter.loanLiability) else 1
+Firm.coupon() : real := if ego.hasLoan() then ego.liabilities.sum(alter.coupon) else 1
+Firm.interest() : real := if ego.hasLoan() then ego.liabilities.sum(alter.interest) else 1
+
+Bank.creditAmount() : real := if ego.hasReceivables() then ego.receivables.sum(alter.loanLiability) else 1
+Bank.coupon() : real := if ego.hasReceivables() then ego.receivables.sum(alter.coupon) else 1
+Bank.interest() : real := if ego.hasReceivables() then ego.receivables.sum(alter.interest) else 1
+
+Bank.averageRisk() : real := ego.creditECAI() / ego.creditAmount()
+Bank.solvency() : real := ego.equity / ego.creditECAI()
+Bank.leverage() : real := ego.equity / ego.creditAmount() + ego.liquidity
+Bank.equityRatio() : real := ego.equity / ego.creditAmount()
+
+/* Solvency relation for risk exposure (credit amount);
+Risk position due to Article 112 CRR (BASEL III) -> 0.2, 0.5, 1, 1.5 */
+Bank.creditECAI() : real := if ego.hasReceivables() then
+                              ego.receivables.sum(alter.loanLiability * alter.debtor.ecaiRating())
+                            else 1
+
+
+//////////////////////////////////////////////////////
+//BANK BAILOUT
+//////////////////////////////////////////////////////
+Bank
+| ego.isBankrupt()
+@ instantly
+-> if ego.equity <= 0 then
+     Government.debt += ego.equity * -1 + ?bailoutSum
+     Government.bailoutCheck += ego.equity * -1 + ?bailoutSum
+     ego.equity := ?bailoutSum
+   else if ego.liquidity <= 0 then
+     Government.debt += ego.liquidity * -1 + 1
+     Government.bailoutCheck += ego.liquidity * -1 + 1
+     ego.liquidity := 1 //Bank liquidity will not be negative (= no liquidity costs for banks)
+   end
+   ego.countBankruptcy += 1
+where ?bailoutSum := max(?bailoutSolvency,?bailoutLeverage)
+      ?bailoutSolvency := (1 + ego.creditECAI()) * ratioSolvency
+      ?bailoutLeverage := (1 + ?totalAssets) * ratioLeverage
+      ?totalAssets := ego.creditAmount() + ego.liquidity
+
+//when loans have to be liquidated (NPL) value of collateral decrease promptly
+Bank.isBankrupt() : bool := ego.equity < 0 || (ego.liquidity < 0)
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//MONETARY SYSTEM
+///////////////////////////////////////////////////////////////////////////////
+/* 1. Deposits flow between banks on central bank account which act as settlement institution
+2. Deposits flow due to wage pay, firm investments, loans, bank account switches
+3. It is assumed that banks do not have an active liquidity management. Deposit imbalances clear automatic over time.
+4. Banks have to hold minimum reserves (basis money) at central banks account.
+5. If outflow of deposits = reserve requirements change.
+   Banks need to take interbank loans in order to balance central bank account.
+6. ReserveRequirement = ad hoc calculation.
+   Reserve period is not chosen, because no active bank liquidity management and ad hoc consumption. */
+
+//////////////////////////////////////////////////////
+//INTERBANK MARKET
+//////////////////////////////////////////////////////
+//Interbank strategy
+Bank
+| true
+@ interbankFrequency
+-> if ego.reservesNeed() > 0 then
+     ?reservesNeed := ego.reservesNeed()
+     ego.requestInterbankLoan(?reservesNeed)
+   end
+   ego.setInterbankStrategy()
+   CentralBank.lendingFacility -= ego.centralLoan
+   ego.basisMoney -= ego.centralLoan
+   ego.centralLoan := 0
+
+//Relation of reserve supply and demand
+Bank.demandEqualsReserves() : bool := !ego.demandGreaterThanReserves() && !ego.demandLessThanReserves()
+Bank.demandGreaterThanReserves() : bool := max(ego.reservesDemand, 1) / max(ego.reservesExcess(), 1) > 1
+Bank.demandLessThanReserves() : bool := max(ego.reservesDemand, 1) / max(ego.reservesExcess(), 1) < 1
+
+Bank.setInterbankStrategy() -> if ego.demandEqualsReserves() && ego.interbankMargin > ?average then
+                                  ego.interbankMargin := max(ego.interbankMargin - gamma_i * random(),
+                                  CentralBank.minInterbankRate())
+                               else if ego.demandEqualsReserves() && ego.interbankMargin <= ?average then
+                                 ego.interbankMargin := min(ego.interbankMargin + gamma_i * random(),
+                                 CentralBank.maxInterbankRate())
+                               else if ego.demandGreaterThanReserves() then
+                                     ego.interbankMargin := min(ego.interbankMargin + gamma_i * random(),
+                                     CentralBank.maxInterbankRate())
+                               else if (ego.demandLessThanReserves()) then
+                                        ego.interbankMargin := max(ego.interbankMargin - gamma_i * random(),
+                                        CentralBank.minInterbankRate())
+                               end
+                               ego.reservesDemand := 0
+where ?average := Bank.all.sum(alter.interbankMargin) / Bank.all.size()
+
+/* defines interbank interest corridor set by Central Bank -> standing facilities 100 basis points
+according to ECB strategy prior to financial crisis 2007/2008 facility range defines basis rate and
+upper/lower bound interbank margin is not directly interlinked with key rate, because of simplicity */
+CentralBank.minInterbankRate() : real := 0.0001
+CentralBank.maxInterbankRate() : real := 2 * facilityRange
+
+//combine key rate with interbank margin
+Bank.keyInterRate() : real := if ego.interbankMargin > facilityRange then
+                                CentralBank.keyRate + ego.interbankMargin
+                              else CentralBank.keyRate - ego.interbankMargin
+
+
+Bank
+| true
+@ every 2 //defines average deadline for holding reserves in balance according to ECB
+-> ego.reserveRequirement := fractionalReserve * ego.deposits() //update reserve amount
+
+
+/* expected liquidity outflow
+-> wages
+-> average consumption = investmentAmount / interbankFrequency
+-> average loan = loan / depositor.size()
+-> average firm deposit = deposits / depositor.size()
+-> average household deposit = deposits / depositor.size() ego.depositorFirm.wage */
+Bank.expectedReserveOutflow() : real := max(ego.paymentWages_lag,0) + ?consumption
+where ?wages := (ego.depositorFirm.sum(alter.employees.size()) * 2) / max(ego.depositorFirm.size(),1) //average wages
+      ?consumption := ?householdConsumption + ?firmConsumption
+      ?firmConsumption := ego.depositorFirm.sum(alter.investmentAmount)
+      ?householdConsumption := ego.depositorHH.sum(alter.wealth)
+      ?depositSwitch := ?firmDeposits + ?householdDeposits
+      ?firmDeposits := ego.depositsFirms() / max(ego.depositorFirm.size(),1)
+      ?householdDeposits := ego.depositsHouseholds() / max(ego.depositorHH.size(),1)
+
+
+//According to TARGET2, payments are covered by basis money
+Bank
+| ego.basisMoney < 0
+@ interbankFrequency / 4
+-> CentralBank.lendingFacility += ego.basisMoney * - 1
+   ego.centralLoan += ego.basisMoney * - 1
+   //TARGET2 intraday borrowing is free of charge
+   //Government.liquidity += (ego.basisMoney * - 1) * (CentralBank.keyRate + facilityRange) / interbankFrequency
+   //ego.liquidity -= (ego.basisMoney * - 1) * (CentralBank.keyRate + facilityRange) / interbankFrequency
+   //ego.centralCosts += (ego.basisMoney * - 1) * (CentralBank.keyRate + facilityRange) / interbankFrequency
+   ego.basisMoney := 0
+
+
+//reserves demand
+//Demand transaction outflow as possible buffer for future outflow
+Bank.reservesNeed() : real := max(0, (ego.basisMoney - ego.reserveRequirement - ego.expectedReserveOutflow()) * -1)
+                              + ego.centralLoan
+Bank.reservesExcess() : real := max((ego.basisMoney - ego.reserveRequirement - ego.expectedReserveOutflow()), 0)
+                                - ego.centralLoan
+
+Bank.reserveRequirement() : real := ego.deposits() * fractionalReserve
+
+//expected available reserves = outflow is subtracted after added in Bank.reservesExcess()
+Bank.expectedReserves() : real := max((ego.basisMoney - ego.reserveRequirement * ego.riskLevel), 0) - ego.centralLoan
+
+
+//Receivables = depicts total amount of credits supplied
+Bank.receivables() : real := if ego.hasReceivables() then (ego.receivables.sum(alter.loanLiability)) else 1
+Bank.hasReceivables() : bool := if ego.receivables != [] then true else false
+
+//deposit identification
+Bank.deposits() : real := ego.depositsHouseholds() + ego.depositsFirms()
+Bank.depositsHouseholds() : real := ego.depositorHH.sum(alter.wealth)
+Bank.depositsFirms() : real := ego.depositorFirm.sum(alter.liquidity + alter.equity + alter.debt +
+                                                     alter.investmentAmount)
+
+Bank.requestInterbankLoan(?reservesNeed : real) ->
+  //split loan amount over several banks if interbank loan amount cannot be supplied by one bank
+  if CentralBank.basisMoney > 0  then
+    ego.basisMoney += min(?reservesNeed, CentralBank.basisMoney)
+    CentralBank.basisMoney -= min(?reservesNeed, CentralBank.basisMoney)
+    ?reservesNeed -= min(?reservesNeed, CentralBank.basisMoney)
+  //liquidity shortage
+  else if (?reservesNeed > 0) && (Bank.all.sum(alter.reservesExcess()) < ?reservesNeed) then
+    ?poolBanks := Bank.all - [ego]
+    ?bankReserves := ?poolBanks.filter(alter.expectedReserves() > 0)
+    //compare with lending facility
+    ?bankMinFacility := ?bankReserves.filter(alter.interbankMargin > CentralBank.minInterbankRate())
+    ?candidates := ?bankMinFacility.filter(alter.interbankMargin < CentralBank.maxInterbankRate())
+    ?remainingLoanRequest := ?reservesNeed
+    //check if bank can supply
+    while (?remainingLoanRequest > 0 && ?candidates.size() > 0) do
+      ?bank := ?candidates.weightedRandom((0.01 / alter.interbankMargin))
+      /* even if bank cannot supply requested interbank loan amount, interbank demand
+      has an impact on interbank strategy */
+      ?bank.reservesDemand += ?remainingLoanRequest
+      ?candidates -= [?bank]
+      //check possibilities to get basis money
+      if ?bank.reservesExcess() > 0 then
+        ?interbankLoan := ?bank.checkCreditworthiness(ego, ?remainingLoanRequest)
+        if ?interbankLoan > 0 then
+          ego.takeInterbankLoan(?interbankLoan, ?bank)
+        end
+        ?remainingLoanRequest -= ?interbankLoan
+      end
+    end
+  else if (?reservesNeed > 0) && Bank.all.sum(alter.reservesExcess()) >= ?reservesNeed then
+    ?poolBanks := Bank.all - [ego]
+    ?bankReserves := ?poolBanks.filter(alter.reservesExcess() > 0)
+    ?bankMinFacility := ?bankReserves.filter(alter.interbankMargin > CentralBank.minInterbankRate())
+    ?candidates := ?bankMinFacility.filter(alter.interbankMargin < CentralBank.maxInterbankRate())
+    ?remainingLoanRequest := ?reservesNeed
+    //check if bank can supply
+    while (?remainingLoanRequest > 0 && ?candidates.size() > 0) do
+      ?bank := ?candidates.weightedRandom((0.01 / alter.interbankMargin))
+      ?bank.reservesDemand += ?remainingLoanRequest
+      ?candidates -= [?bank]
+      //check liquidity limit due to Basel III
+      ?interbankLoan := ?bank.checkCreditworthiness(ego, ?remainingLoanRequest)
+      if ?interbankLoan > 0 then
+        ego.takeInterbankLoan(?interbankLoan, ?bank)
+      end
+      ?remainingLoanRequest -= ?interbankLoan
+    end
+  else if ?reservesNeed > 0 then
+    CentralBank.lendingFacility += ?reservesNeed
+    ego.centralLoan += ?reservesNeed
+    ego.interbankVolume += ?reservesNeed
+    //activate liquidity impact when conducting (policy) experiments
+    /* Government.liquidity += ?reservesNeed * (CentralBank.keyRate + facilityRange) / interbankFrequency
+    ego.liquidity -= ?reservesNeed * (CentralBank.keyRate + facilityRange) / interbankFrequency */
+    ego.centralCosts += ?reservesNeed * (CentralBank.keyRate + facilityRange) / interbankFrequency
+    ego.basisMoney += ?reservesNeed
+  end
+
+
+/* Creditworthiness
+-> no interbank loan when regulatory requirements are not met
+-> Central Bank intervenes as Lender of Last Resort
+-> no interest risk premium within baseline model to keep it simple */
+Bank.checkCreditworthiness(?bank : Bank, ?remainingLoanRequest : real) : real :=
+  if (?bank.ecaiSolvency() <= 0) then 0 else ?bank.limitInterbankLoan(?remainingLoanRequest)
+
+//Check interbank loan potential
+Bank.limitInterbankLoan(?remainingLoanRequest : real) : real :=
+  if ego.expectedReserves() > ?remainingLoanRequest then ?remainingLoanRequest else ego.expectedReserves()
+
+
+/* Interbank interest payments are not included within the baseline model
+-> since credit structure might be too complex which lead to extensive simulation runtime */
+Bank.takeInterbankLoan(?interBankLoan : real, ?bank : Bank) ->
+  //adapt demand to get only surplus demand
+  //?bank.reservesDemand -= ?interBankLoan
+  //generate new Agent/CreditLine
+  //?CreditLine := new CreditLine()
+  //?CreditLine.coupon := ?interBankLoan
+  //?CreditLine.interest := ?bank.interestInterRate(?interBankLoan) //average interest costs per interbank period
+  //?CreditLine.loanLiability := ?interBankLoan // + (?bank.interestInterRate(?interBankLoan) * interbankLoanDuration)
+  //transfer basis money
+  ?bank.basisMoney -= ?interBankLoan
+  //?bank.liquidity += ?interBankLoan * ?interestRate
+  ?bank.interbankProfit += ?interBankLoan * ?interestRate
+  ego.basisMoney += ?interBankLoan
+  //ego.liquidity -= ?interBankLoan * ?interestRate
+  ego.interbankCosts += ?interBankLoan * ?interestRate
+  ego.interbankVolume += ?interBankLoan
+  //set connect bank and bank with new CreditLine
+  //?CreditLine.depositCreditor := ?bank
+  //?CreditLine.depositDebtor := ego
+where ?interestRate := (1 + (CentralBank.keyRate - 0.01 + ?bank.interbankMargin))^(1/interbankFrequency) - 1
+
+/*
+//interest part for bank profit per period
+Bank.interestInterRate(?interBankLoan : real) : real :=
+  ((?interBankLoan * ego.interbankMargin) + (ego.interbankMargin * (?interBankLoan / interbankLoanDuration) *
+  (interbankLoanDuration * (interbankLoanDuration - 1) / 2))) / interbankLoanDuration
+
+//redeem interbank loan
+Bank
+| true
+@ interbankFrequency
+-> ego.payInterbankLoan()
+
+Bank.payInterbankLoan() -> if ego.depositLiabilities != [] then
+                            ?creditLine := ego.depositLiabilities.argmax(alter.age) //repay oldest credit line
+                             ?creditLine.loanLiability -= ?creditLine.coupon + ?creditLine.interest
+                             ?creditLine.depositCreditor.basisMoney += ?creditLine.coupon
+                             ego.basisMoney -= ?creditLine.coupon
+
+                             //pay interest to interbank counterpart
+                             //ego.liquidity -= ?creditLine.interest * (1 - tax)
+                             //?creditLine.depositCreditor.liquidity += ?creditLine.interest * (1 - tax)
+                             //Government.liquidity += ?creditLine.interest * tax
+
+                             //delete credit line
+                             if ?creditLine.loanLiability <= 0 then
+                                ?creditLine.die()
+                                ?creditLine.depositCreditor.depositReceivables -= [?creditLine]
+                                ego.depositLiabilities -= [?creditLine]
+                             end
+                           end
+*/
+
+//////////////////////////////////////////////////////
+//DEPOSIT MARKET
+//////////////////////////////////////////////////////
+//Bank deposit change rate
+Bank
+| ego.depositDemand > 0
+@ ego.depositChangeRate()
+-> ego.setDepositStrategy()
+
+Bank.depositChangeRate() : real := if ?depositRequirement < 1 then max((1 - ?depositRequirement) + 1,2)
+                                   else ?depositRequirement
+where ?depositRequirement := max(ego.depositDemand, 1) / max(ego.reserveRequirement(),1)
+
+
+////////Bank deposit strategy////////
+Bank.demandEqualsLiquidity() : bool := !ego.demandGreaterThanLiquidity() && !ego.demandLessThanLiquidity()
+Bank.demandGreaterThanLiquidity() : bool := max(ego.depositDemand, 1) / max(ego.reserveRequirement(),1) > 1
+Bank.demandLessThanLiquidity() : bool := max(ego.depositDemand, 1) / max(ego.reserveRequirement(),1) < 1
+
+Bank.setDepositStrategy() ->
+  //if interest level at time t < (t-1), update deposit margin
+  if ego.depositMargin > ?averageCreditRate then ego.depositMargin := ?averageCreditRate
+  end
+
+  if (ego.demandEqualsLiquidity() && ego.depositMargin >= ?average) then
+      ego.depositMargin := max(ego.depositMargin - gamma_d * random(),0.0001)
+
+  //high demand and high deposit margin = optimize costs and decline deposit margin
+  else if (ego.demandGreaterThanLiquidity() && ego.depositMargin >= ?average) then
+           ego.depositMargin := max(ego.depositMargin - gamma_d * random(),0.0001)
+
+  //reserve liquidity need and low incentive to get bank account for depositor = higher depositMargin
+  else if (ego.demandLessThanLiquidity() && ego.depositMargin <= ?average) then
+           ego.depositMargin := ego.depositMargin + gamma_d * random()
+  end
+  ego.depositDemand := 0
+where ?average := Mercury.averageDepositMargin()
+      ?averageCreditRate := ego.depositInterest()
+      ?moneyMarketRate := max(ego.interbankMargin,0.001) //banks pay at least money market interest margin
+
+//adapt deposit interest margin to interest spread which is structured from highest to lowest interest rate
+Bank.revertDepositMargin() : real := if ego.depositMargin > ?average then (?average - (ego.depositMargin - ?average))
+                                        else (?average + (?average - ego.depositMargin))
+where ?average := Mercury.averageDepositMargin()
+
+Bank.depositInterest() : real := max(CentralBank.keyRate - facilityRange - depositBuffer + ego.depositMargin,0.0001)
+
+Firm.revertDepositMargin() : real := Bank.all.sum(alter.revertDepositMargin()) / Bank.all.size()
+Firm.depositInterest() : real := Bank.all.sum(alter.depositInterest()) / Bank.all.size()
+
+////////Household deposit strategy////////
+Household
+| true
+@ 1 / hhAccountChange //change bank account for better conditions every 12 periods
+-> if random() < accountFluctuationHH then
+      ego.depositInstituteHH.depositorHH -= [ego]
+      ego.depositInstituteHH := ?bank
+      ?bank.depositDemand += ego.wealth
+   end
+where ?bank := Bank.all.weightedRandom((alter.depositMargin / ?average))
+      ?average := Mercury.averageDepositMargin()
+
+////////Firm deposit strategy////////
+Firm
+| true
+@ 1 / firmAccountChange //change bank account for better conditions approximately every decade
+-> ego.depositInstituteFirm.depositorFirm -= [ego]
+   ego.depositInstituteFirm := ?bank
+   ?bank.depositDemand += ?deposits
+where ?bank := Bank.all.weightedRandom((alter.depositMargin / ?average))
+      ?average := Mercury.averageDepositMargin()
+      ?deposits := ego.liquidity + ego.equity + ego.debt + ego.investmentAmount
+
+
+////////Accounting////////
+Bank
+| true
+@ every 1
+-> ego.profit := ego.receivables.sum(alter.interest) * (1 - tax)
+   ego.paymentWages_lag := ego.paymentWages //monitor payment transactions
+   ego.paymentWages := 0
+   ego.centralCosts_lag := ego.centralCosts
+   ego.centralCosts := 0
+   ego.interbankCosts := 0
+   ego.interbankProfit := 0
+   ego.interbankVolume := 0
+   ego.creditDefault := 0
+   ego.countBankruptcy := 0
+
+   /* Deposit interest payment by bank;
+   Only equity is considered which can be invested in money market;
+   Lending facility is not interest bearing */
+   if ego.depositorFirm.size() > 0 then
+      for each ?depositor in ego.depositorFirm
+        ?depositor.liquidity += ?depositor.equity * ego.depositInterest_lag
+        ?depositor.depositProfit := ?depositor.equity * ego.depositInterest_lag
+        ego.liquidity -= ?depositor.equity * ego.depositInterest()
+       end
+    end
+   ego.depositInterest_lag := ego.depositInterest()
+
+
+//Interbank crash
+Household
+| Mercury.interbankCrash()
+@ interbankFrequency
+-> ego.wealth := 1 //demand shock by Household consumption due to bank run/withdraw restrictions
+
+//credit creation potential is automatically stopped via Bank.creditcreationPotential()
+Mercury.interbankCrash() : bool := false
+/*
+if ?averageInterbankRate <= (0.01 * delta) ||
+     ?averageInterbankRate >= (0.01 * (1 + delta)) then
+     true else false
+where ?averageInterbankRate := Bank.all.sum(alter.interbankMargin) / Bank.all.size()
+*/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//CENTRAL BANK
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Open market interaction
+CentralBank
+| ?averageInterbankRate > facilityRange
+@ ego.pushDown() * interbankFrequency / 4 // 4 = per week
+-> if ?aggregateBasisMoney < ?aggregateNeed then
+      ego.basisMoney += ?aggregateNeed - ?aggregateBasisMoney
+      ego.interbankVolume += ?aggregateNeed - ?aggregateBasisMoney
+   end
+where ?aggregateBasisMoney := Bank.all.sum(alter.reservesExcess())
+      ?aggregateNeed := Bank.all.sum(alter.reservesNeed())
+      ?averageInterbankRate := Bank.all.sum(alter.interbankMargin) / Bank.all.size()
+
+CentralBank
+| ?averageInterbankRate < facilityRange
+@ ego.pushUp() * interbankFrequency / 4 // 4 = per week
+-> if ?aggregateBasisMoney > ?aggregateNeed then
+      ?amount := ?aggregateBasisMoney - ?aggregateNeed
+      ego.withdrawLiquidity(?amount)
+   end
+where ?aggregateBasisMoney := Bank.all.sum(alter.basisMoney)
+      ?aggregateNeed := Bank.all.sum(alter.deposits() * fractionalReserve)
+      ?averageInterbankRate := Bank.all.sum(alter.interbankMargin) / Bank.all.size()
+
+
+CentralBank.pushDown() : real := if (?averageInterbankRate / 0.01 > 1) then exp(?averageInterbankRate / 0.01) else 1
+                             where ?averageInterbankRate := Bank.all.sum(alter.interbankMargin) / Bank.all.size()
+
+CentralBank.pushUp() : real := if (0.01 / ?averageInterbankRate > 1) then exp(?averageInterbankRate / 0.01) else 1
+                             where ?averageInterbankRate := Bank.all.sum(alter.interbankMargin) / Bank.all.size()
+
+//get weight of banks that have basisMoney and decrease accordingly
+CentralBank.withdrawLiquidity(?amount : real) ->
+    ?candidates := Bank.all.filter(alter.reservesExcess() > 0)
+    ?sum := Bank.all.sum(alter.reservesExcess())
+  while (?amount > 0 && ?candidates.size() > 0) do
+    ?average := ?candidates.sum(alter.reservesExcess()) / ?candidates.size()
+    ?bank := ?candidates.weightedRandom((?average / alter.reservesExcess()))
+    ?bank.basisMoney -= min(?bank.basisMoney * delta, ?bank.basisMoney)
+    ego.interbankVolume += min(?bank.basisMoney * delta, ?bank.basisMoney)
+    ?amount -= min(?bank.basisMoney * delta, ?bank.basisMoney)
+    ?candidates -= [?bank]
+  end
+
+//price inflation measurement
+CentralBank
+| true
+@ every 3 //quarterly inflation measurement
+-> ego.inflationBasis := ego.inflationBasis()
+   ego.inflation_lag_4 := ego.inflation_lag_3
+   ego.inflation_lag_3 := ego.inflation_lag_2
+   ego.inflation_lag_2 := ego.inflation_lag_1
+   ego.inflation_lag_1 := ego.inflationBasis
+   ego.priceInflation := 0
+   ego.demandInflation := 0
+
+CentralBank.inflationBasis() : real := if max(ego.priceInflation, 0.001) / max(ego.demandInflation, 0.001) <= 1 then 2
+                                       else max(ego.priceInflation,0.001) / max(ego.demandInflation, 0.001)
+CentralBank.inflationAverage() : real :=
+  ((ego.inflation_lag_3 / ego.inflation_lag_4 -1) + (ego.inflation_lag_2 / ego.inflation_lag_3 -1) +
+  (ego.inflation_lag_1 / ego.inflation_lag_2 -1)) / 3
+
+
+//Key rate definition (main refinancing operations)
+CentralBank
+| true
+@ every 2 //defines average monetary policy decision schedule of ECB -> regular cycle of 6 weeks
+-> ego.taylorRule()
+
+/* TAYLOR RULE
+-> average inflation + market equilibrium interest rate + alpha *
+   (expected/current inflation - inflation target) + beta * output gap;
+-> output gap = (log) difference between real GDP and target_GDP (depending on long term growth rate) */
+CentralBank.taylorRule() ->
+  ego.keyRate := max(naturalInterest + 0.5 * (ego.inflationAverage() - inflationTarget) +
+                 (0.5 * (Firm.all.sum(alter.production()) - ?productionPotential) / ?productionPotential),0.001)
+where ?productionPotential := Household.all.size() * productivityBase * (1 - fullEmployment)
+
+//Counter-cyclical buffer due to Basel III
+CentralBank.creditGDP() : real := max(?creditAverage,1) / max(?gdpAverage,1)
+where ?creditAverage := Firm.all.sum(alter.creditSum_lag)  / Firm.all.size()
+      ?gdpAverage := Firm.all.sum(alter.supply_nom_lag) / Firm.all.size()
+
+CentralBank.currentCreditGDP() : real := max(?creditAverage,1) / max(?gdpAverage,1)
+where ?creditAverage := max(CreditLine.all.sum(alter.loanLiability),1) / Firm.all.size()
+      ?gdpAverage := Firm.all.sum(alter.consumption + alter.investmentConsume +
+                     (alter.inventory - alter.inventory_lag)) / Firm.all.size()
+
+CentralBank.creditGDPratio() : real := (ego.currentCreditGDP() - ego.creditGDP) * 100
+CentralBank.counterCyclicalBuffer() : real := max(min((ego.creditGDPratio()-2) * (0.025/(10-2)),0.025),0)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//GOVERNMENT
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Government
+| true
+@ every 1
+-> ego.payUnemploymentBenefits()
+   ego.bailoutCheck := 0
+
+//unemployment benefit
+Government.payUnemploymentBenefits() ->
+  for each ?citizen in ?unemployed
+           ?citizen.wealth += ego.unemployBenefit()
+  end
+  Government.debt += ?unemployed.size() * ego.unemployBenefit()
+where ?unemployed := Household.all.filter(!alter.hasEmployer())
+
+Government.unemployBenefit() : real := benefit
+//if (?employeesSum > 0) then ((Firm.all.sum(alter.wage * alter.employees.size())) / ?employeesSum) else benefit
+//where ?employeesSum := Firm.all.sum(alter.employees.size())
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//MERCURY = auxiliary agent
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Mercury.averagePrice() : real := Firm.all.sum(alter.price) / Firm.all.size()
+Mercury.fullyEmployed() : bool := (?unemployed / ?totalEmployees) < fullEmployment
+where ?unemployed := Household.all.filter(!alter.hasEmployer()).size()
+      ?totalEmployees := Household.all.size()
+
+Mercury.averageMargin() : real := Bank.all.sum(alter.margin) / Bank.all.size()
+Mercury.averageInterestOffer() : real := Bank.all.sum(alter.makeOffer()) / Bank.all.size()
+Mercury.averageDepositMargin() : real := max(Bank.all.sum(alter.depositMargin) / Bank.all.size(), 0.0001)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Validation
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Firm.inflationAverage() : real := CentralBank.inflationAverage()
+Firm.investmentPool() : real := Firm.all.sum(alter.investmentPool) / Firm.all.size()
+Firm.interestLevel() : real := Bank.all.sum(alter.makeOffer()) / Bank.all.size()
+Firm.bankProfit() : real := Bank.all.sum(alter.profit) / Bank.all.size()
+Firm.bankRuptcyCheck() : real := Bank.all.sum(alter.countBankruptcy)
+Firm.leverageRatio() : real := min((ego.debt + ego.creditAmount()) / ego.equity, 10) //max 10 due to plot scale
+Firm.equityRatio() : real := min((ego.equity / (ego.debt + ego.creditAmount())) * 100, 100) //max 100 due to plot scale
+Firm.govBailoutGDP() : real := Government.bailoutCheck
+Firm.bankCreditDefault() : real := Bank.all.sum(alter.creditDefault)
+Bank.interbankVolume() : real := CentralBank.interbankVolume
+
+Firm
+| true
+@ every 3 //quarterly measurement
+-> ego.investmentQuarterly := 0
+   ego.consumptionQuarterly := 0
+   ego.supplyQuarterly := 0
+
+Firm
+| true
+@ every 12 //check every 12 periods in order to measure with less noise/fluctuations
+-> ego.supply_nom_lag := ego.supply_nom
+   ego.supply_nom := 0
+   ego.creditSum_lag := ego.creditSum
+   ego.creditSum := 0
+   ego.countBankruptcy := 0
+
+CentralBank
+| true
+@ every 12
+-> ego.creditGDP := (ego.creditGDP_lag_4 + ego.creditGDP_lag_3 + ego.creditGDP_lag_2 +
+                     ego.creditGDP_lag_1 + ego.creditGDP()) / 5
+   ego.creditGDP_lag_4 := ego.creditGDP_lag_3
+   ego.creditGDP_lag_3 := ego.creditGDP_lag_2
+   ego.creditGDP_lag_2 := ego.creditGDP_lag_1
+   ego.creditGDP_lag_1 := ego.creditGDP()
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Interbank experiment (Stylized fact)
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+//add following variable to Central Bank: "nowness : real" (lines 93 ff.)
+//deactivate open market transaction above (lines 1271 - 1291)
+
+   CentralBank
+   | true
+   @ every 1
+   -> ego.nowness := now
+      ego.interbankVolume := 0
+
+
+   CentralBank
+   | ego.nowness > 50 && ego.nowness < 100
+   @ every 1
+   -> ?allBanks := Bank.all
+        if ?average > 0.001 then
+          for each ?bank in ?allBanks
+            ?bank.basisMoney += 10
+          end
+        end
+        CentralBank.basisMoney := 0
+   where ?average := Bank.all.sum(alter.interbankMargin) / Bank.all.size()
+
+
+   CentralBank
+   | ?averageInterbankRate > facilityRange && ego.nowness < 50
+   @ ego.pushDown() * interbankFrequency / 4 // 4 = per week
+   -> if ?aggregateBasisMoney < ?aggregateNeed then
+         ego.basisMoney += ?aggregateNeed - ?aggregateBasisMoney
+         ego.interbankVolume += ?aggregateNeed - ?aggregateBasisMoney
+      end
+   where ?aggregateBasisMoney := Bank.all.sum(alter.reservesExcess())
+         ?aggregateNeed := Bank.all.sum(alter.reservesNeed())
+         ?averageInterbankRate := Bank.all.sum(alter.interbankMargin) / Bank.all.size()
+
+
+   CentralBank
+   | ?averageInterbankRate < facilityRange && ego.nowness < 50
+   @ ego.pushUp() * interbankFrequency / 4 // 4 = per week
+   -> if ?aggregateBasisMoney > ?aggregateNeed then
+         ?amount := ?aggregateBasisMoney - ?aggregateNeed
+         ego.withdrawLiquidity(?amount)
+      end
+   where ?aggregateBasisMoney := Bank.all.sum(alter.basisMoney)
+         ?aggregateNeed := Bank.all.sum(alter.deposits() * fractionalReserve)
+         ?averageInterbankRate := Bank.all.sum(alter.interbankMargin) / Bank.all.size()
+
+
+   CentralBank
+   | ?averageInterbankRate > facilityRange && ego.nowness > 100
+   @ ego.pushDown() * interbankFrequency / 4 // 4 = per week
+   -> if ?aggregateBasisMoney < ?aggregateNeed then
+         ego.basisMoney += ?aggregateNeed - ?aggregateBasisMoney
+         ego.interbankVolume += ?aggregateNeed - ?aggregateBasisMoney
+      end
+   where ?aggregateBasisMoney := Bank.all.sum(alter.reservesExcess())
+         ?aggregateNeed := Bank.all.sum(alter.reservesNeed())
+         ?averageInterbankRate := Bank.all.sum(alter.interbankMargin) / Bank.all.size()
+
+
+   CentralBank
+   | ?averageInterbankRate < facilityRange && ego.nowness > 100
+   @ ego.pushUp() * interbankFrequency / 4 // 4 = per week
+   -> if ?aggregateBasisMoney > ?aggregateNeed then
+        amount := ?aggregateBasisMoney - ?aggregateNeed
+        ego.withdrawLiquidity(?amount)
+      end
+   where ?aggregateBasisMoney := Bank.all.sum(alter.basisMoney)
+         ?aggregateNeed := Bank.all.sum(alter.deposits() * fractionalReserve)
+         ?averageInterbankRate := Bank.all.sum(alter.interbankMargin) / Bank.all.size()
+*/
