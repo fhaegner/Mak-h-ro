@@ -1,0 +1,13 @@
+cff-version: 1.0.0
+authors:
+  - family-names: Peters
+    given-names: Florian
+  - family-names: Neuberger
+    given-names: Doris
+  - family-names: Reinhardt
+    given-names: Oliver
+  - family-names: Uhrmacher
+    given-names: Adelinde
+title: "Mak(h)ro simulation environment"
+version: 1.0.0
+date-released: 2022-28-04
