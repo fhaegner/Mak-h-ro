@@ -27,7 +27,7 @@ deleteRowsByColumn <- function(data, desiredCols) {
 
 
 #get data
-run <- read_csv("C:/Users/.../run-0.csv")
+run_0 <- read_csv("C:/Users/.../run-0.csv")
 
 
 list <- colnames(run_0)
