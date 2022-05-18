@@ -6,7 +6,6 @@ CITATION
 Software requirements:
 
 * Java Runtime Environment 8 or newer (e.g., from https://adoptopenjdk.net/).
-* R, with the packages "dplyr", "readr" , "colorspace", "gridExtra", "lubridate", "ggloop", "rlang" and "ggplot2".
 * You do not need to install any additional software, as all required artifacts are downloaded automatically.
 
 The repository contains the `Mak_h_ro_0.ml3` model in ML3, the corresponding experiment (`Mak_h_ro_0.scala`) [1], and the related supplement. The supplement presents the model parameters and main variables, the link between the model description [1] and ML3/SESSL code, and information about the validation replication.
