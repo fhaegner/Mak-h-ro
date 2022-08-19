@@ -12,7 +12,7 @@ library(data.table)
 
 #get data
 #SF2 uses run-0
-#run <- read_csv("C:/Users/.../run-0.csv")
+run <- read_csv("C:/Users/.../run-0.csv")
 
 
 df <- as.data.frame(run$time)
