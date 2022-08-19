@@ -3,7 +3,7 @@ rm(list = ls())
 
 
 #set working directory
-#setwd("C:/Users/...")
+setwd("C:/Users/...")
 
 #get packages
 library(tidyverse) #contains ggplot2, dplyr, tidyr, readr, purr, tibble, stringr, forcats, rlang, lubridate, pillar
