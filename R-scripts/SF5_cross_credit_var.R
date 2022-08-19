@@ -3,7 +3,7 @@ rm(list = ls())
 gc()
 
 #set working directory that directly links to the folder with all replications
-#setwd("C:/Users/.../results")
+setwd("C:/Users/.../results")
 
 #get packages
 library(mFilter) #for Baxter-King filter
