@@ -1,12 +1,13 @@
 # Mak-h-ro - Readme #
 
 This repository contains all models and SESSL-experiments from the paper:
-CITATION
+Florian Peters, Doris Neuberger, Oliver Reinhardt, and Adelinde M. Uhrmacher. A basic macroeconomic agent-based model for analyzing monetary regime shifts, 2022. URL https://arxiv.org/pdf/2205.00752.
 
 Software requirements:
 
 * Java Runtime Environment 8 or newer (e.g., from https://adoptopenjdk.net/).
 * You do not need to install any additional software, as all required artifacts are downloaded automatically.
+* R with following packages: tidyverse, mFilter, data.table, ggubr, colorspace, gridExtra, ggloop, rlang, ellipsis, acepack, rlist
 
 The repository contains the `Mak_h_ro_0.ml3` model in ML3, the corresponding experiment (`Mak_h_ro_0.scala`) [1], and the related supplement. The supplement presents the model parameters and main variables, the link between the model description [1] and ML3/SESSL code, and information about the validation replication.
 The supplied experiment can be executed with
@@ -39,7 +40,7 @@ The Modeling Language for Linked Lives (ML3) is a domain-specific modeling langu
 Simulation Experiment Specification via a Scala Layer (SESSL) is a domain-specific language for the specification of simulation experiments [5]. The SESSL-ML3 binding allows for the use of SESSL together with ML3 [4]. For documentation (including a User Guide and a Developer Guide), see [sessl.org](http://sessl.org/).
 
 # References
-[1] CITATION
+[1] Florian Peters, Doris Neuberger, Oliver Reinhardt, and Adelinde M. Uhrmacher. A basic macroeconomic agent-based model for analyzing monetary regime shifts, 2022. URL https://arxiv.org/pdf/2205.00752.
 
 [2] Tom Warnke, Oliver Reinhardt, Anna Klabunde, Frans Willekens, Adelinde M. Uhrmacher. "Modelling and simulating decision processes of linked lives: An approach based on concurrent processes and stochastic race" In: Population Studies, 71 (sup1) 69-83, 2017.
 
