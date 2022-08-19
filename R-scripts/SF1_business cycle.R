@@ -2,7 +2,7 @@
 rm(list = ls())
 
 #set working directory
-#setwd("C:/Users/...")
+setwd("C:/Users/...")
 
 
 #get packages
